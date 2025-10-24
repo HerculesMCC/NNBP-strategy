@@ -45,8 +45,6 @@ Captent les dépendances temporelles (ex. tendance sur 30 jours).
 
 Peuvent être appliqués aux séries temporelles pour détecter des motifs (comme des patterns chartistes).
 
-On utilisera ici un LSTM.
-
 
 **📌 4. Comment formuler le problème ?**
 
