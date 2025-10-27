@@ -1,56 +1,67 @@
 #!/usr/bin/env python3
 """
-Script de démonstration pour l'analyse de 10 actions américaines
+Démonstration de l'analyse d'actions américaines
 """
 
 import os
-import sys
 
 def main():
-    print("=== DÉMONSTRATION: ANALYSE DE 10 ACTIONS AMÉRICAINES ===")
+    print("=== DÉMONSTRATION ===")
     print()
     
-    # Vérifier si les fichiers existent
-    required_files = ['multi_stock_analysis.py', 'database_analyzer.py']
+    print("🎯 OBJECTIF:")
+    print("   Analyser 5 actions américaines avec un modèle MLP")
+    print("   Comparer la performance vs Buy & Hold")
+    print("   Stocker les résultats dans une base de données SQLite")
+    print()
+    
+    print("📊 ACTIONS ANALYSÉES:")
+    stocks = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
+    for i, stock in enumerate(stocks, 1):
+        print(f"   {i}. {stock}")
+    print()
+    
+    print("🔧 MODÈLE UTILISÉ:")
+    print("   - Réseau de neurones (2 couches)")
+    print("   - 5 jours de données pour prédire le jour suivant")
+    print("   - Classification binaire (hausse/baisse)")
+    print()
+    
+    print("📈 MÉTRIQUES CALCULÉES:")
+    print("   - Précision du modèle")
+    print("   - Rendement de la stratégie")
+    print("   - Rendement Buy & Hold")
+    print("   - Performance relative")
+    print()
+    
+    # Vérifier les fichiers
+    required_files = ['stock_analysis.py', 'stock_analyzer.py']
     missing_files = [f for f in required_files if not os.path.exists(f)]
     
     if missing_files:
         print(f"❌ Fichiers manquants: {', '.join(missing_files)}")
         return
     
-    print("📊 Étape 1: Analyse des 10 actions américaines")
-    print("   - Téléchargement des données (ou génération simulée)")
-    print("   - Entraînement des modèles MLP")
-    print("   - Calcul des métriques de performance")
-    print("   - Sauvegarde en base de données SQLite")
+    print("🚀 LANCEMENT DE L'ANALYSE...")
     print()
     
-    # Exécuter l'analyse
     try:
-        print("🚀 Lancement de l'analyse...")
-        import multi_stock_analysis
-        multi_stock_analysis.main()
-        print("✅ Analyse terminée avec succès!")
+        # Exécuter l'analyse
+        import stock_analysis
+        stock_analysis.main()
+        
+        print("\n✅ ANALYSE TERMINÉE !")
         print()
         
-        print("📈 Étape 2: Génération du rapport et des graphiques")
-        print("   - Analyse des performances par action")
-        print("   - Analyse par secteur")
-        print("   - Génération des visualisations")
-        print()
+        # Analyser les résultats
+        print("📊 ANALYSE DES RÉSULTATS...")
+        import stock_analyzer
+        stock_analyzer.main()
         
-        # Générer le rapport
-        import database_analyzer
-        database_analyzer.main()
-        print("✅ Rapport généré avec succès!")
-        print()
-        
-        print("📁 Fichiers générés:")
+        print("\n📁 FICHIERS GÉNÉRÉS:")
         files_to_check = [
-            'stock_predictions.db',
-            'stock_analysis_results.csv',
-            'stock_performance_analysis.png',
-            'sector_analysis.png'
+            'stock_analysis.db',
+            'results.csv'
         ]
         
         for file in files_to_check:
@@ -60,17 +71,8 @@ def main():
             else:
                 print(f"   ✗ {file} (manquant)")
         
-        print()
-        print("🎯 Prochaines étapes possibles:")
-        print("   1. Examiner la base de données avec un outil SQLite")
-        print("   2. Modifier les paramètres dans multi_stock_analysis.py")
-        print("   3. Ajouter d'autres actions à analyser")
-        print("   4. Implémenter des stratégies plus avancées")
-        
     except Exception as e:
-        print(f"❌ Erreur lors de l'exécution: {e}")
-        print("💡 Assurez-vous que toutes les dépendances sont installées:")
-        print("   pip install -r requirements.txt")
+        print(f"❌ Erreur: {e}")
 
 if __name__ == "__main__":
     main()
