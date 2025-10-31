@@ -8,11 +8,11 @@ from tensorflow.keras import layers, models
 import sqlite3
 from datetime import datetime
 
-# Supprimer les warnings
+#supprimer les warnings
 import warnings
 warnings.filterwarnings("ignore")
 
-# Liste de 5 actions américaines (simplifiée)
+#liste actions US en input
 STOCKS = [
     {"symbol": "AAPL", "name": "Apple Inc."},
     {"symbol": "MSFT", "name": "Microsoft Corporation"},
@@ -22,7 +22,7 @@ STOCKS = [
 ]
 
 def create_database():
-    """Créer la base de données"""
+    
     conn = sqlite3.connect('stock_analysis.db')
     cursor = conn.cursor()
     
@@ -44,7 +44,6 @@ def create_database():
     return conn
 
 def download_stock_data(symbol):
-    """Télécharger les données d'une action"""
     try:
         print(f"Téléchargement de {symbol}...")
         data = yf.download(symbol, start="2020-01-01", end="2023-01-01", progress=False)
@@ -69,7 +68,7 @@ def download_stock_data(symbol):
         return data
 
 def analyze_stock(data, symbol):
-    """Analyser une action avec un modèle"""
+    """Analyser une action avec un modèle MLP""" #multilayer perceptron
     print(f"Analyse de {symbol}...")
     
     # Calculer les rendements
@@ -104,7 +103,7 @@ def analyze_stock(data, symbol):
     model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
     
     # Entraînement rapide
-    model.fit(X_train, y_train, epochs=10, batch_size=32, verbose=0)
+    model.fit(X_train, y_train, epochs=10, batch_size=32, verbose=2)
     
     # Prédictions
     predictions = model.predict(X_test, verbose=0).flatten()
@@ -131,7 +130,6 @@ def analyze_stock(data, symbol):
     }
 
 def save_to_database(conn, stock_info, results):
-    """Sauvegarder les résultats"""
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO stock_results (symbol, name, accuracy, strategy_return, buy_hold_return, performance)
@@ -177,7 +175,7 @@ def main():
         except Exception as e:
             print(f"✗ Erreur pour {stock_info['symbol']}: {e}")
     
-    # Afficher le résumé
+    
     print("\n" + "="*50)
     print("RÉSULTATS")
     print("="*50)
