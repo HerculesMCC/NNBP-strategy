@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Démonstration de l'analyse d'actions américaines
+Démonstration de l'analyse d'actions américaines par secteur
 """
 
 import os
@@ -10,21 +10,47 @@ def main():
     print()
     
     print("🎯 OBJECTIF:")
-    print("   Analyser 5 actions américaines avec un modèle MLP")
+    print("   Analyser 22 actions américaines (S&P 500) avec un modèle LSTM")
     print("   Comparer la performance vs Buy & Hold")
     print("   Stocker les résultats dans une base de données SQLite")
     print()
     
-    print("📊 ACTIONS ANALYSÉES:")
-    stocks = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
-    for i, stock in enumerate(stocks, 1):
-        print(f"   {i}. {stock}")
+    print("📊 UNIVERS D'INVESTISSEMENT : 22 Actions Américaines")
+    print("   - Diversification équilibrée : 2 actions par secteur")
+    print("   - 11 secteurs représentés (GICS: Global Industry Classification Standard)")
+    print("   - Grandes capitalisations du S&P 500")
+    print("   - Liquidité élevée et données complètes")
+    print()
+    
+    # Importer la liste depuis stock_analysis
+    import stock_analysis
+    stocks = stock_analysis.STOCKS
+    
+    print("📋 ACTIONS PAR SECTEUR (2 par secteur):")
+    sectors = {
+        "Technologie": ["AAPL", "MSFT"],
+        "Finance": ["JPM", "V"],
+        "Santé": ["JNJ", "UNH"],
+        "Consommation Discrétionnaire": ["TSLA", "HD"],
+        "Consommation Staples": ["WMT", "PG"],
+        "Énergie": ["XOM", "CVX"],
+        "Industriel": ["BA", "CAT"],
+        "Télécommunications": ["T", "VZ"],
+        "Matériaux": ["LIN", "APD"],
+        "Utilitaires": ["NEE", "DUK"],
+        "Immobilier": ["AMT", "PLD"]
+    }
+    
+    for sector, symbols in sectors.items():
+        print(f"   {sector}: {', '.join(symbols)}")
     print()
     
     print("🔧 MODÈLE UTILISÉ:")
-    print("   - Réseau de neurones (2 couches)")
-    print("   - 5 jours de données pour prédire le jour suivant")
+    print("   - LSTM (Long Short-Term Memory)")
+    print("   - 20 jours de données pour prédire le jour suivant")
     print("   - Classification binaire (hausse/baisse)")
+    print("   - Architecture : LSTM(50) → Dropout → Dense(25) → Dropout → Sortie")
+    print("   - Inspiré des thèses sur la prédiction de cours boursiers")
     print()
     
     print("📈 MÉTRIQUES CALCULÉES:")

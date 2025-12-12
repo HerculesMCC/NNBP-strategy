@@ -1,63 +1,220 @@
 import sqlite3
 import pandas as pd
+import numpy as np
 
-def analyze_results():
-    """Analyser les résultats de la base de données"""
-    conn = sqlite3.connect('stock_analysis.db')
-    
-    # Récupérer tous les résultats
+# Mapping des secteurs pour l'analyse
+SECTOR_MAPPING = {
+    "AAPL": "Technologie", "MSFT": "Technologie",
+    "JPM": "Finance", "V": "Finance",
+    "JNJ": "Santé", "UNH": "Santé",
+    "TSLA": "Consommation Discrétionnaire", "HD": "Consommation Discrétionnaire",
+    "WMT": "Consommation Staples", "PG": "Consommation Staples",
+    "XOM": "Énergie", "CVX": "Énergie",
+    "BA": "Industriel", "CAT": "Industriel",
+    "T": "Télécommunications", "VZ": "Télécommunications",
+    "LIN": "Matériaux", "APD": "Matériaux",
+    "NEE": "Utilitaires", "DUK": "Utilitaires",
+    "AMT": "Immobilier", "PLD": "Immobilier"
+}
+
+def get_latest_analysis(conn):
+    """Récupérer uniquement la dernière analyse pour chaque action"""
     query = '''
-    SELECT symbol, name, accuracy, strategy_return, buy_hold_return, performance
+    SELECT symbol, name, accuracy, strategy_return, buy_hold_return, performance, created_at
     FROM stock_results
+    WHERE id IN (
+        SELECT MAX(id) 
+        FROM stock_results 
+        GROUP BY symbol
+    )
     ORDER BY performance DESC
     '''
+    return pd.read_sql_query(query, conn)
+
+def analyze_results():
+    """Analyser les résultats de la base de données avec analyses approfondies"""
+    conn = sqlite3.connect('stock_analysis.db')
     
-    df = pd.read_sql_query(query, conn)
+    # Récupérer uniquement les dernières analyses (éviter les doublons)
+    df = get_latest_analysis(conn)
+    
+    # Ajouter la colonne secteur
+    df['sector'] = df['symbol'].map(SECTOR_MAPPING)
+    
     conn.close()
     
     if df.empty:
         print("Aucune donnée trouvée dans la base de données.")
         return
     
-    print("="*60)
-    print("ANALYSE DES RÉSULTATS")
-    print("="*60)
+    print("="*70)
+    print("ANALYSE APPROFONDIE DE LA BASE DE DONNÉES")
+    print("="*70)
     print()
     
-    # Statistiques générales
+    # 1. STATISTIQUES GÉNÉRALES
     print("📊 STATISTIQUES GÉNÉRALES")
-    print("-" * 30)
-    print(f"Nombre d'actions analysées: {len(df)}")
-    print(f"Précision moyenne: {df['accuracy'].mean():.2f}")
-    print(f"Performance moyenne: {df['performance'].mean():.2f}")
+    print("-" * 70)
+    print(f"Nombre total d'analyses dans la DB: {len(df)}")
+    print(f"Nombre d'actions uniques: {df['symbol'].nunique()}")
     print()
     
-    # Meilleure et pire performance
+    print("Moyennes:")
+    print(f"  • Précision moyenne: {df['accuracy'].mean():.2%}")
+    print(f"  • Performance moyenne: {df['performance'].mean():.2%}")
+    print(f"  • Rendement stratégie moyen: {df['strategy_return'].mean():.2%}")
+    print(f"  • Rendement Buy & Hold moyen: {df['buy_hold_return'].mean():.2%}")
+    print()
+    
+    print("Médianes:")
+    print(f"  • Précision médiane: {df['accuracy'].median():.2%}")
+    print(f"  • Performance médiane: {df['performance'].median():.2%}")
+    print()
+    
+    print("Écarts-types:")
+    print(f"  • Écart-type précision: {df['accuracy'].std():.2%}")
+    print(f"  • Écart-type performance: {df['performance'].std():.2%}")
+    print()
+    
+    # 2. DISTRIBUTION DES PERFORMANCES
+    print("📈 DISTRIBUTION DES PERFORMANCES")
+    print("-" * 70)
+    positive_perf = (df['performance'] > 0).sum()
+    negative_perf = (df['performance'] <= 0).sum()
+    print(f"Actions avec performance positive: {positive_perf} ({positive_perf/len(df):.1%})")
+    print(f"Actions avec performance négative: {negative_perf} ({negative_perf/len(df):.1%})")
+    print()
+    
+    # Comparaison stratégie vs Buy & Hold
+    strategy_better = (df['strategy_return'] > df['buy_hold_return']).sum()
+    print(f"Stratégie meilleure que Buy & Hold: {strategy_better} actions ({strategy_better/len(df):.1%})")
+    print()
+    
+    # 3. MEILLEURES ET PIRE PERFORMANCES
     best = df.loc[df['performance'].idxmax()]
     worst = df.loc[df['performance'].idxmin()]
     
-    print("🏆 MEILLEURE PERFORMANCE")
-    print("-" * 30)
-    print(f"Action: {best['symbol']} ({best['name']})")
-    print(f"Performance: {best['performance']:.2f}")
-    print(f"Précision: {best['accuracy']:.2f}")
+    print("🏆 TOP 3 PAR PERFORMANCE")
+    print("-" * 70)
+    top3 = df.nlargest(3, 'performance')
+    for i, (_, row) in enumerate(top3.iterrows(), 1):
+        print(f"{i}. {row['symbol']:6s} ({row['sector']:30s}) | "
+              f"Performance: {row['performance']:7.2%} | "
+              f"Stratégie: {row['strategy_return']:7.2%} | "
+              f"B&H: {row['buy_hold_return']:7.2%} | "
+              f"Précision: {row['accuracy']:5.2%}")
     print()
     
-    print("📉 PIRE PERFORMANCE")
-    print("-" * 30)
-    print(f"Action: {worst['symbol']} ({worst['name']})")
-    print(f"Performance: {worst['performance']:.2f}")
-    print(f"Précision: {worst['accuracy']:.2f}")
+    print("📉 3 PIRE PERFORMANCES")
+    print("-" * 70)
+    bottom3 = df.nsmallest(3, 'performance')
+    for i, (_, row) in enumerate(bottom3.iterrows(), 1):
+        print(f"{i}. {row['symbol']:6s} ({row['sector']:30s}) | "
+              f"Performance: {row['performance']:7.2%} | "
+              f"Stratégie: {row['strategy_return']:7.2%} | "
+              f"B&H: {row['buy_hold_return']:7.2%} | "
+              f"Précision: {row['accuracy']:5.2%}")
     print()
     
-    # Classement complet
-    print("📈 CLASSEMENT COMPLET")
-    print("-" * 30)
-    for i, (_, row) in enumerate(df.iterrows(), 1):
-        print(f"{i}. {row['symbol']}: {row['performance']:.2f} (Précision: {row['accuracy']:.2f})")
+    # 4. MEILLEURES PRÉCISIONS
+    print("🎯 TOP 5 PAR PRÉCISION")
+    print("-" * 70)
+    top5_acc = df.nlargest(5, 'accuracy')
+    for i, (_, row) in enumerate(top5_acc.iterrows(), 1):
+        print(f"{i}. {row['symbol']:6s} ({row['sector']:30s}) | "
+              f"Précision: {row['accuracy']:5.2%} | "
+              f"Performance: {row['performance']:7.2%}")
+    print()
+    
+    # 5. ANALYSE PAR SECTEUR
+    if df['sector'].notna().any():
+        print("🏭 ANALYSE PAR SECTEUR")
+        print("-" * 70)
+        sector_stats = df.groupby('sector').agg({
+            'performance': ['mean', 'count'],
+            'accuracy': 'mean',
+            'strategy_return': 'mean',
+            'buy_hold_return': 'mean'
+        }).round(4)
+        
+        sector_stats.columns = ['Performance_moy', 'Nb_actions', 'Précision_moy', 'Stratégie_moy', 'B&H_moy']
+        sector_stats = sector_stats.sort_values('Performance_moy', ascending=False)
+        
+        print(f"{'Secteur':<30} {'Nb':<4} {'Perf. moy':<10} {'Préc. moy':<10} {'Strat. moy':<10} {'B&H moy':<10}")
+        print("-" * 70)
+        for sector, row in sector_stats.iterrows():
+            print(f"{sector:<30} {int(row['Nb_actions']):<4} "
+                  f"{row['Performance_moy']:>9.2%} {row['Précision_moy']:>9.2%} "
+                  f"{row['Stratégie_moy']:>9.2%} {row['B&H_moy']:>9.2%}")
+        print()
+    
+    # 6. RÉSULTATS DES 22 ACTIONS (liste complète)
+    print("📋 RÉSULTATS DES 22 ACTIONS (par secteur)")
+    print("-" * 70)
+    
+    # Liste complète des 22 actions attendues
+    all_expected_stocks = [
+        ("AAPL", "Technologie"), ("MSFT", "Technologie"),
+        ("JPM", "Finance"), ("V", "Finance"),
+        ("JNJ", "Santé"), ("UNH", "Santé"),
+        ("TSLA", "Consommation Discrétionnaire"), ("HD", "Consommation Discrétionnaire"),
+        ("WMT", "Consommation Staples"), ("PG", "Consommation Staples"),
+        ("XOM", "Énergie"), ("CVX", "Énergie"),
+        ("BA", "Industriel"), ("CAT", "Industriel"),
+        ("T", "Télécommunications"), ("VZ", "Télécommunications"),
+        ("LIN", "Matériaux"), ("APD", "Matériaux"),
+        ("NEE", "Utilitaires"), ("DUK", "Utilitaires"),
+        ("AMT", "Immobilier"), ("PLD", "Immobilier")
+    ]
+    
+    # Créer un DataFrame avec toutes les actions attendues
+    df_all = pd.DataFrame(all_expected_stocks, columns=['symbol', 'sector'])
+    
+    # Fusionner avec les résultats existants
+    df_merged = df_all.merge(df[['symbol', 'accuracy', 'strategy_return', 'buy_hold_return', 'performance', 'name']], 
+                             on='symbol', how='left')
+    
+    # Afficher par secteur
+    current_sector = None
+    for _, row in df_merged.iterrows():
+        if row['sector'] != current_sector:
+            if current_sector is not None:
+                print()  # Ligne vide entre secteurs
+            print(f"\n🏭 {row['sector']}:")
+            print(f"{'Symbole':<10} {'Nom':<35} {'Performance':<12} {'Stratégie':<12} {'B&H':<12} {'Précision':<10}")
+            print("-" * 70)
+            current_sector = row['sector']
+        
+        if pd.notna(row['performance']):
+            name_str = row['name'] if pd.notna(row['name']) else 'N/A'
+            print(f"{row['symbol']:<10} {name_str:<35} "
+                  f"{row['performance']:>11.2%} {row['strategy_return']:>11.2%} "
+                  f"{row['buy_hold_return']:>11.2%} {row['accuracy']:>9.2%}")
+        else:
+            print(f"{row['symbol']:<10} {'(Non analysée)':<35} {'N/A':<12} {'N/A':<12} {'N/A':<12} {'N/A':<10}")
     
     print()
-    print("="*60)
+    
+    # 7. CLASSEMENT COMPLET (par performance)
+    print("📊 CLASSEMENT COMPLET (par performance décroissante)")
+    print("-" * 70)
+    print(f"{'Rang':<6} {'Symbole':<8} {'Secteur':<30} {'Performance':<12} {'Stratégie':<12} {'B&H':<12} {'Précision':<10}")
+    print("-" * 70)
+    
+    # Filtrer seulement les actions avec résultats
+    df_with_results = df[df['performance'].notna()].copy()
+    if len(df_with_results) > 0:
+        for i, (_, row) in enumerate(df_with_results.iterrows(), 1):
+            sector_str = row['sector'] if pd.notna(row['sector']) else 'N/A'
+            print(f"{i:<6} {row['symbol']:<8} {sector_str:<30} "
+                  f"{row['performance']:>11.2%} {row['strategy_return']:>11.2%} "
+                  f"{row['buy_hold_return']:>11.2%} {row['accuracy']:>9.2%}")
+    else:
+        print("Aucun résultat disponible")
+    
+    print()
+    print(f"✅ Actions analysées: {len(df_with_results)}/22")
+    print("="*70)
 
 def show_database_structure():
     """Afficher la structure de la base de données"""
@@ -86,7 +243,7 @@ def show_database_structure():
 
 def main():
     """Fonction principale"""
-    print("=== ANALYSEUR DE RÉSULTATS ===")
+    print("=== ANALYSEUR APPROFONDI DE RÉSULTATS ===")
     print()
     
     try:
@@ -94,11 +251,13 @@ def main():
         show_database_structure()
         print()
         
-        # Analyser les résultats
+        # Analyser les résultats avec analyses approfondies
         analyze_results()
         
     except Exception as e:
         print(f"Erreur: {e}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
     main()
