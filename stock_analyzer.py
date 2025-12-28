@@ -55,7 +55,7 @@ def analyze_results():
     # 1. STATISTIQUES GÉNÉRALES
     print("📊 STATISTIQUES GÉNÉRALES")
     print("-" * 70)
-    print(f"Nombre total d'analyses dans la DB: {len(df)}")
+    print(f"Nombre d'actions analysées: {len(df)}/22")
     print(f"Nombre d'actions uniques: {df['symbol'].nunique()}")
     print()
     
@@ -83,45 +83,44 @@ def analyze_results():
     negative_perf = (df['performance'] <= 0).sum()
     print(f"Actions avec performance positive: {positive_perf} ({positive_perf/len(df):.1%})")
     print(f"Actions avec performance négative: {negative_perf} ({negative_perf/len(df):.1%})")
-    print()
     
     # Comparaison stratégie vs Buy & Hold
     strategy_better = (df['strategy_return'] > df['buy_hold_return']).sum()
     print(f"Stratégie meilleure que Buy & Hold: {strategy_better} actions ({strategy_better/len(df):.1%})")
     print()
     
-    # 3. MEILLEURES ET PIRE PERFORMANCES
-    best = df.loc[df['performance'].idxmax()]
-    worst = df.loc[df['performance'].idxmin()]
-    
-    print("🏆 TOP 3 PAR PERFORMANCE")
+    # 3. TOP/BOTTOM PERFORMANCES
+    print("🏆 TOP 5 PAR PERFORMANCE")
     print("-" * 70)
-    top3 = df.nlargest(3, 'performance')
-    for i, (_, row) in enumerate(top3.iterrows(), 1):
-        print(f"{i}. {row['symbol']:6s} ({row['sector']:30s}) | "
+    top5 = df.nlargest(5, 'performance')
+    for i, (_, row) in enumerate(top5.iterrows(), 1):
+        sector_str = row['sector'] if pd.notna(row['sector']) else 'N/A'
+        print(f"{i}. {row['symbol']:6s} ({sector_str:<30s}) | "
               f"Performance: {row['performance']:7.2%} | "
               f"Stratégie: {row['strategy_return']:7.2%} | "
               f"B&H: {row['buy_hold_return']:7.2%} | "
               f"Précision: {row['accuracy']:5.2%}")
     print()
     
-    print("📉 3 PIRE PERFORMANCES")
+    print("📉 5 PIRE PERFORMANCES")
     print("-" * 70)
-    bottom3 = df.nsmallest(3, 'performance')
-    for i, (_, row) in enumerate(bottom3.iterrows(), 1):
-        print(f"{i}. {row['symbol']:6s} ({row['sector']:30s}) | "
+    bottom5 = df.nsmallest(5, 'performance')
+    for i, (_, row) in enumerate(bottom5.iterrows(), 1):
+        sector_str = row['sector'] if pd.notna(row['sector']) else 'N/A'
+        print(f"{i}. {row['symbol']:6s} ({sector_str:<30s}) | "
               f"Performance: {row['performance']:7.2%} | "
               f"Stratégie: {row['strategy_return']:7.2%} | "
               f"B&H: {row['buy_hold_return']:7.2%} | "
               f"Précision: {row['accuracy']:5.2%}")
     print()
     
-    # 4. MEILLEURES PRÉCISIONS
+    # 4. TOP PRÉCISIONS
     print("🎯 TOP 5 PAR PRÉCISION")
     print("-" * 70)
     top5_acc = df.nlargest(5, 'accuracy')
     for i, (_, row) in enumerate(top5_acc.iterrows(), 1):
-        print(f"{i}. {row['symbol']:6s} ({row['sector']:30s}) | "
+        sector_str = row['sector'] if pd.notna(row['sector']) else 'N/A'
+        print(f"{i}. {row['symbol']:6s} ({sector_str:<30s}) | "
               f"Précision: {row['accuracy']:5.2%} | "
               f"Performance: {row['performance']:7.2%}")
     print()
@@ -148,7 +147,7 @@ def analyze_results():
                   f"{row['Stratégie_moy']:>9.2%} {row['B&H_moy']:>9.2%}")
         print()
     
-    # 6. RÉSULTATS DES 22 ACTIONS (liste complète)
+    # 6. RÉSULTATS DES 22 ACTIONS (liste complète par secteur)
     print("📋 RÉSULTATS DES 22 ACTIONS (par secteur)")
     print("-" * 70)
     
@@ -194,26 +193,7 @@ def analyze_results():
             print(f"{row['symbol']:<10} {'(Non analysée)':<35} {'N/A':<12} {'N/A':<12} {'N/A':<12} {'N/A':<10}")
     
     print()
-    
-    # 7. CLASSEMENT COMPLET (par performance)
-    print("📊 CLASSEMENT COMPLET (par performance décroissante)")
-    print("-" * 70)
-    print(f"{'Rang':<6} {'Symbole':<8} {'Secteur':<30} {'Performance':<12} {'Stratégie':<12} {'B&H':<12} {'Précision':<10}")
-    print("-" * 70)
-    
-    # Filtrer seulement les actions avec résultats
-    df_with_results = df[df['performance'].notna()].copy()
-    if len(df_with_results) > 0:
-        for i, (_, row) in enumerate(df_with_results.iterrows(), 1):
-            sector_str = row['sector'] if pd.notna(row['sector']) else 'N/A'
-            print(f"{i:<6} {row['symbol']:<8} {sector_str:<30} "
-                  f"{row['performance']:>11.2%} {row['strategy_return']:>11.2%} "
-                  f"{row['buy_hold_return']:>11.2%} {row['accuracy']:>9.2%}")
-    else:
-        print("Aucun résultat disponible")
-    
-    print()
-    print(f"✅ Actions analysées: {len(df_with_results)}/22")
+    print(f"✅ Actions analysées: {len(df)}/22")
     print("="*70)
 
 def show_database_structure():

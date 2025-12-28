@@ -109,7 +109,7 @@ def create_database():
 def download_stock_data(symbol):
     try:
         print(f"Téléchargement de {symbol}...")
-        data = yf.download(symbol, start="2018-01-01", end="2023-01-01", progress=False)
+        data = yf.download(symbol, start="2020-01-01", end="2023-01-01", progress=False)
         
         if data.empty:
             raise ValueError("Données vides")
@@ -120,7 +120,7 @@ def download_stock_data(symbol):
     except Exception as e:
         print(f"✗ Erreur pour {symbol}: {e}")
         # Données simulées simples
-        dates = pd.date_range(start="2018-01-01", end="2023-01-01", freq="D")
+        dates = pd.date_range(start="2020-01-01", end="2023-01-01", freq="D")
         prices = 100 * np.cumprod(1 + np.random.normal(0.001, 0.02, len(dates)))
         
         data = pd.DataFrame({
@@ -149,7 +149,9 @@ def analyze_stock(data, symbol):
     
     # Fenêtre temporelle : 20 jours pour capturer les tendances
     # (plus longue que le MLP précédent où c'était 5 jours)
-    lookback_window = 20
+    
+    
+    lookback_window = 20 #60, 40 et 20 à tester
     
     # Créer les séquences temporelles pour le LSTM
     X, y = [], []
@@ -179,8 +181,7 @@ def analyze_stock(data, symbol):
     X_train = X_train.reshape((X_train.shape[0], X_train.shape[1], 1))
     X_test = X_test.reshape((X_test.shape[0], X_test.shape[1], 1))
     
-    # ARCHITECTURE LSTM inspirée des thèses académiques
-    # Architecture classique : LSTM → Dropout (régularisation) → Dense → Sortie
+    #LSTM → Dropout (régularisation) → Dense → Sortie
     model = models.Sequential([
         # Couche LSTM avec 50 unités (mémoire)
         # return_sequences=False : on ne retourne que la dernière sortie
@@ -188,7 +189,7 @@ def analyze_stock(data, symbol):
         
         # Dropout pour éviter le surapprentissage (régularisation)
         layers.Dropout(0.2),
-        
+
         # Couche dense pour la classification finale
         layers.Dense(25, activation='relu'),
         
@@ -225,13 +226,6 @@ def analyze_stock(data, symbol):
     # car chaque séquence X[i] prédit le rendement du jour i+lookback_window
     test_start_idx = split_idx + lookback_window
     returns = data["Return"].iloc[test_start_idx:test_start_idx+len(positions)].values
-    
-    # Vérification de cohérence
-    if len(returns) != len(positions):
-        print(f"⚠ {symbol}: Incohérence de longueur (returns: {len(returns)}, positions: {len(positions)})")
-        min_len = min(len(returns), len(positions))
-        returns = returns[:min_len]
-        positions = positions[:min_len]
     
     strategy_returns = positions * returns  # Investi seulement si prédiction hausse
     
