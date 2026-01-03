@@ -2,34 +2,52 @@ import sqlite3
 import pandas as pd
 import numpy as np
 
-# Mapping des secteurs pour l'analyse
-SECTOR_MAPPING = {
-    "AAPL": "Technologie", "MSFT": "Technologie",
-    "JPM": "Finance", "V": "Finance",
-    "JNJ": "Santé", "UNH": "Santé",
-    "TSLA": "Consommation Discrétionnaire", "HD": "Consommation Discrétionnaire",
-    "WMT": "Consommation Staples", "PG": "Consommation Staples",
-    "XOM": "Énergie", "CVX": "Énergie",
-    "BA": "Industriel", "CAT": "Industriel",
-    "T": "Télécommunications", "VZ": "Télécommunications",
-    "LIN": "Matériaux", "APD": "Matériaux",
-    "NEE": "Utilitaires", "DUK": "Utilitaires",
-    "AMT": "Immobilier", "PLD": "Immobilier"
-}
+# Le secteur est maintenant stocké dans la base de données, pas besoin de mapping
 
 def get_latest_analysis(conn):
     """Récupérer uniquement la dernière analyse pour chaque action"""
-    query = '''
-    SELECT symbol, name, accuracy, strategy_return, buy_hold_return, performance, created_at
-    FROM stock_results
-    WHERE id IN (
-        SELECT MAX(id) 
-        FROM stock_results 
-        GROUP BY symbol
-    )
-    ORDER BY performance DESC
-    '''
-    return pd.read_sql_query(query, conn)
+    # Vérifier si la colonne sector existe
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(stock_results)")
+    columns = [col[1] for col in cursor.fetchall()]
+    has_sector = 'sector' in columns
+    
+    if has_sector:
+        query = '''
+        SELECT symbol, name, sector, accuracy, strategy_return, buy_hold_return, performance, created_at
+        FROM stock_results
+        WHERE id IN (
+            SELECT MAX(id) 
+            FROM stock_results 
+            GROUP BY symbol
+        )
+        ORDER BY performance DESC
+        '''
+    else:
+        # Fallback si la colonne sector n'existe pas
+        query = '''
+        SELECT symbol, name, accuracy, strategy_return, buy_hold_return, performance, created_at
+        FROM stock_results
+        WHERE id IN (
+            SELECT MAX(id) 
+            FROM stock_results 
+            GROUP BY symbol
+        )
+        ORDER BY performance DESC
+        '''
+    
+    df = pd.read_sql_query(query, conn)
+    
+    # Ajouter la colonne sector si elle n'existe pas (avec mapping depuis stock_analysis)
+    if 'sector' not in df.columns:
+        try:
+            import stock_analysis
+            sector_mapping = {s['symbol']: s['sector'] for s in stock_analysis.STOCKS}
+            df['sector'] = df['symbol'].map(sector_mapping).fillna('N/A')
+        except:
+            df['sector'] = 'N/A'
+    
+    return df
 
 def analyze_results():
     """Analyser les résultats de la base de données avec analyses approfondies"""
@@ -38,10 +56,11 @@ def analyze_results():
     # Récupérer uniquement les dernières analyses (éviter les doublons)
     df = get_latest_analysis(conn)
     
-    # Ajouter la colonne secteur
-    df['sector'] = df['symbol'].map(SECTOR_MAPPING)
-    
     conn.close()
+    
+    # Le secteur est déjà dans la base de données
+    if 'sector' not in df.columns:
+        df['sector'] = 'N/A'
     
     if df.empty:
         print("Aucune donnée trouvée dans la base de données.")
@@ -55,7 +74,7 @@ def analyze_results():
     # 1. STATISTIQUES GÉNÉRALES
     print("📊 STATISTIQUES GÉNÉRALES")
     print("-" * 70)
-    print(f"Nombre d'actions analysées: {len(df)}/22")
+    print(f"Nombre d'actions analysées: {len(df)}/100")
     print(f"Nombre d'actions uniques: {df['symbol'].nunique()}")
     print()
     
@@ -147,31 +166,37 @@ def analyze_results():
                   f"{row['Stratégie_moy']:>9.2%} {row['B&H_moy']:>9.2%}")
         print()
     
-    # 6. RÉSULTATS DES 22 ACTIONS (liste complète par secteur)
-    print("📋 RÉSULTATS DES 22 ACTIONS (par secteur)")
+    # 6. RÉSULTATS DES 100 ACTIONS (liste complète par secteur)
+    print("📋 RÉSULTATS DES 100 ACTIONS (par secteur)")
     print("-" * 70)
     
-    # Liste complète des 22 actions attendues
-    all_expected_stocks = [
-        ("AAPL", "Technologie"), ("MSFT", "Technologie"),
-        ("JPM", "Finance"), ("V", "Finance"),
-        ("JNJ", "Santé"), ("UNH", "Santé"),
-        ("TSLA", "Consommation Discrétionnaire"), ("HD", "Consommation Discrétionnaire"),
-        ("WMT", "Consommation Staples"), ("PG", "Consommation Staples"),
-        ("XOM", "Énergie"), ("CVX", "Énergie"),
-        ("BA", "Industriel"), ("CAT", "Industriel"),
-        ("T", "Télécommunications"), ("VZ", "Télécommunications"),
-        ("LIN", "Matériaux"), ("APD", "Matériaux"),
-        ("NEE", "Utilitaires"), ("DUK", "Utilitaires"),
-        ("AMT", "Immobilier"), ("PLD", "Immobilier")
-    ]
-    
-    # Créer un DataFrame avec toutes les actions attendues
-    df_all = pd.DataFrame(all_expected_stocks, columns=['symbol', 'sector'])
+    # Importer la liste complète depuis stock_analysis
+    try:
+        import stock_analysis
+        all_expected_stocks = [(s['symbol'], s['sector'], s['name']) for s in stock_analysis.STOCKS]
+        df_all = pd.DataFrame(all_expected_stocks, columns=['symbol', 'sector', 'name_expected'])
+    except Exception as e:
+        # Fallback si import échoue
+        print(f"  ⚠ Impossible d'importer la liste complète des actions: {e}")
+        if 'sector' in df.columns and 'name' in df.columns:
+            df_all = df[['symbol', 'sector', 'name']].copy()
+            df_all['name_expected'] = df_all['name']
+        else:
+            df_all = df[['symbol']].copy()
+            df_all['sector'] = 'N/A'
+            df_all['name_expected'] = 'N/A'
     
     # Fusionner avec les résultats existants
     df_merged = df_all.merge(df[['symbol', 'accuracy', 'strategy_return', 'buy_hold_return', 'performance', 'name']], 
-                             on='symbol', how='left')
+                             on='symbol', how='left', suffixes=('', '_actual'))
+    
+    # Utiliser le nom de la base si disponible, sinon celui attendu
+    if 'name' in df_merged.columns:
+        df_merged['name'] = df_merged['name'].fillna(df_merged['name_expected'])
+    else:
+        df_merged['name'] = df_merged['name_expected']
+    
+    df_merged = df_merged.drop(columns=['name_expected'], errors='ignore')
     
     # Afficher par secteur
     current_sector = None
@@ -193,7 +218,7 @@ def analyze_results():
             print(f"{row['symbol']:<10} {'(Non analysée)':<35} {'N/A':<12} {'N/A':<12} {'N/A':<12} {'N/A':<10}")
     
     print()
-    print(f"✅ Actions analysées: {len(df)}/22")
+    print(f"✅ Actions analysées: {len(df)}/100")
     print("="*70)
 
 def show_database_structure():
