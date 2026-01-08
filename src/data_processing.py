@@ -31,7 +31,7 @@ def prepare_sector_data(stocks_in_sector, rolling_window_days=252, test_window_d
     all_X_test, all_y_test = [], []
     all_stock_data = []  # Stocker les données brutes pour le scaler
     
-    for stock_info in stocks_in_sector:
+    for stock_info in stocks_in_sector: 
         try:
             symbol = stock_info['symbol']
             # Utiliser le cache si disponible, sinon télécharger
